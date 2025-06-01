@@ -1,0 +1,32 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f9f9f9;
+  text-align: center;
+  padding: 20px;
+}
+
+.toolbar {
+  margin-bottom: 10px;
+}
+
+button {
+  margin: 5px;
+  padding: 10px 15px;
+  background: #0078d4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+canvas {
+  border: 2px solid #ccc;
+  background: white;
+}
+
+input[type="color"] {
+  margin-left: 10px;
+  height: 40px;
+  width: 40px;
+  border: none;
+}
