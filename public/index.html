@@ -6,10 +6,21 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>🛠️ Rudimentary CAD</h1>
-  <button id="draw-line">Line</button>
-  <button id="draw-rect">Rectangle</button>
-  <canvas id="canvas" width="800" height="600"></canvas>
+  <h1>🖌️ Mini CAD App</h1>
+
+  <div class="toolbar">
+    <button data-tool="line">Line</button>
+    <button data-tool="rect">Rectangle</button>
+    <button data-tool="circle">Circle</button>
+    <button data-tool="squiggle">Squiggly</button>
+    <button data-tool="erase">Eraser</button>
+    <button id="new-tab">+ New Tab</button>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="canvas" width="800" height="600"></canvas>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
