@@ -1,30 +1,53 @@
 let currentTool = 'line';
+let currentColor = '#000000';
+let currentBoardId = 'default';
 let drawing = false;
 let startX, startY;
-let path = []; // for squiggle
+let path = [];
 
-const canvasContainer = document.getElementById('canvas-container');
 let canvas = document.getElementById('canvas');
 let ctx = canvas.getContext('2d');
+const canvasContainer = document.getElementById('canvas-container');
 
 const API_URL = 'http://localhost:4000/api/shapes';
+const colorPicker = document.getElementById('color-picker');
+const tabSelect = document.getElementById('tab-select');
 
 document.querySelectorAll('[data-tool]').forEach(btn => {
   btn.onclick = () => currentTool = btn.dataset.tool;
 });
 
-document.getElementById('new-tab').onclick = () => {
-  const newCanvas = document.createElement('canvas');
-  newCanvas.width = 800;
-  newCanvas.height = 600;
-  newCanvas.id = 'canvas-' + Date.now();
-  newCanvas.style.border = '2px solid #ccc';
-  canvasContainer.innerHTML = '';
-  canvasContainer.appendChild(newCanvas);
-  canvas = newCanvas;
-  ctx = canvas.getContext('2d');
-  attachEvents();
+colorPicker.onchange = (e) => {
+  currentColor = e.target.value;
 };
+
+document.getElementById('new-tab').onclick = () => {
+  const boardId = 'board-' + Date.now();
+  addTab(boardId, true);
+  switchBoard(boardId);
+};
+
+tabSelect.onchange = (e) => {
+  switchBoard(e.target.value);
+};
+
+function addTab(boardId, select = false) {
+  const opt = document.createElement('option');
+  opt.value = boardId;
+  opt.textContent = boardId;
+  tabSelect.appendChild(opt);
+  if (select) tabSelect.value = boardId;
+}
+
+function switchBoard(boardId) {
+  currentBoardId = boardId;
+  clearCanvas();
+  loadShapes();
+}
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
 
 function drawShape(shape) {
   ctx.beginPath();
@@ -36,13 +59,13 @@ function drawShape(shape) {
   } else if (shape.type === 'circle') {
     const radius = Math.hypot(shape.x2 - shape.x1, shape.y2 - shape.y1);
     ctx.arc(shape.x1, shape.y1, radius, 0, Math.PI * 2);
-  } else if (shape.type === 'squiggle') {
+  } else if (shape.type === 'squiggle' || shape.tool === 'erase') {
     shape.path.forEach((p, i) => {
       if (i === 0) ctx.moveTo(p.x, p.y);
       else ctx.lineTo(p.x, p.y);
     });
   }
-  ctx.strokeStyle = shape.color || "black";
+  ctx.strokeStyle = shape.tool === 'erase' ? 'white' : (shape.color || 'black');
   ctx.lineWidth = shape.tool === 'erase' ? 20 : 2;
   ctx.stroke();
 }
@@ -57,14 +80,17 @@ function attachEvents() {
   canvas.onmouseup = (e) => {
     if (!drawing) return;
     drawing = false;
-    const [x2, y2] = [e.offsetX, e.offsetY];
+    const x2 = e.offsetX;
+    const y2 = e.offsetY;
 
     let shape;
-
-    if (currentTool === 'squiggle') {
-      shape = { type: 'squiggle', path, color: 'black' };
-    } else if (currentTool === 'erase') {
-      shape = { type: 'squiggle', path, tool: 'erase', color: 'white' };
+    if (currentTool === 'squiggle' || currentTool === 'erase') {
+      shape = {
+        type: 'squiggle',
+        path,
+        tool: currentTool,
+        color: currentTool === 'erase' ? 'white' : currentColor
+      };
     } else {
       shape = {
         type: currentTool,
@@ -72,36 +98,43 @@ function attachEvents() {
         y1: startY,
         x2,
         y2,
-        color: 'black'
+        color: currentColor
       };
     }
 
     drawShape(shape);
 
-    fetch(API_URL, {
+    fetch(`${API_URL}?boardId=${currentBoardId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(shape)
-    }).then(res => res.json());
+    });
   };
 
   canvas.onmousemove = (e) => {
     if (!drawing) return;
     if (currentTool === 'squiggle' || currentTool === 'erase') {
-      path.push({ x: e.offsetX, y: e.offsetY });
+      const x = e.offsetX;
+      const y = e.offsetY;
+      path.push({ x, y });
       ctx.beginPath();
       ctx.moveTo(path[path.length - 2].x, path[path.length - 2].y);
-      ctx.lineTo(e.offsetX, e.offsetY);
-      ctx.strokeStyle = currentTool === 'erase' ? 'white' : 'black';
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = currentTool === 'erase' ? 'white' : currentColor;
       ctx.lineWidth = currentTool === 'erase' ? 20 : 2;
       ctx.stroke();
     }
   };
 }
 
-window.onload = () => {
-  fetch(API_URL)
+function loadShapes() {
+  fetch(`${API_URL}?boardId=${currentBoardId}`)
     .then(res => res.json())
     .then(shapes => shapes.forEach(drawShape));
+}
+
+window.onload = () => {
+  addTab('default', true);
   attachEvents();
+  switchBoard('default');
 };
