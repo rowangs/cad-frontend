@@ -12,7 +12,7 @@ window.onload = () => {
 
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
-  const API_URL = 'https://cad-backend.onrender.com/api/shapes';
+  const API_URL = 'https://cad-backend-1.onrender.com/api/shapes';
 
   document.querySelectorAll('[data-tool]').forEach(btn => {
     btn.onclick = () => currentTool = btn.dataset.tool;
