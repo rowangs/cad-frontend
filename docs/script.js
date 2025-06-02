@@ -22,7 +22,6 @@ window.onload = () => {
   const clearButton = document.getElementById('clear-board');
   const exportButton = document.getElementById('export-png');
   const strokeSlider = document.getElementById('stroke-slider');
-
   const undoButton = document.getElementById('undo-btn');
   const redoButton = document.getElementById('redo-btn');
 
@@ -72,8 +71,8 @@ window.onload = () => {
     const stack = redoStacks[currentBoardId];
     if (!stack || stack.length === 0) return;
 
-    const oldShape = stack.pop();
-    const newShape = { ...oldShape, id: Date.now().toString() }; // assign new ID
+    const shape = stack.pop();
+    const newShape = { ...shape, id: Date.now().toString() };
     undoStacks[currentBoardId].push(newShape);
 
     fetch(`${API_URL}?boardId=${currentBoardId}`, {
@@ -155,7 +154,9 @@ window.onload = () => {
 
   canvas.onmousemove = (e) => {
     if (!drawing || (currentTool !== 'squiggle' && currentTool !== 'erase')) return;
-    const x = e.offsetX, y = e.offsetY;
+
+    const x = e.offsetX;
+    const y = e.offsetY;
     path.push({ x, y });
 
     ctx.beginPath();
@@ -193,9 +194,3 @@ window.onload = () => {
   addTab('default', true);
   switchBoard('default');
 };
-// The above code initializes a simple CAD-like application with a canvas for drawing shapes.
-// It supports multiple tools (line, rectangle, circle, squiggle, erase), color selection, undo/redo functionality,
-// and the ability to create multiple boards (tabs) that can be switched between.
-//   ctx.lineWidth = shape.width || 2;
-//     ctx.strokeStyle = shape.tool === 'erase' ? 'white' : (shape.color || 'black');
-//     ctx.stroke();
