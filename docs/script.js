@@ -50,21 +50,6 @@ window.onload = () => {
       .then(() => switchBoard(currentBoardId));
   };
 
-  document.getElementById('redo-btn').onclick = () => {
-    const stack = redoStacks[currentBoardId];
-    if (!stack?.length) return;
-
-    const shape = stack.pop();
-    undoStacks[currentBoardId] ||= [];
-    undoStacks[currentBoardId].push(shape);
-
-    fetch(`${API_URL}?boardId=${currentBoardId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(shape)
-    }).then(() => drawShape(shape));
-  };
-
   document.getElementById('export-png').onclick = () => {
     const link = document.createElement('a');
     link.download = `${currentBoardId}.png`;
