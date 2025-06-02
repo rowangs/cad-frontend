@@ -1,5 +1,5 @@
 window.onload = () => {
-  console.log("✅ CAD+Backend loaded");
+  console.log("✅ CAD App Loaded");
 
   let currentTool = 'line';
   let currentColor = '#000000';
@@ -9,6 +9,7 @@ window.onload = () => {
   let path = [];
   let undoStack = [];
   let redoStack = [];
+  let strokeSize = 2;
 
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -17,6 +18,8 @@ window.onload = () => {
   const colorPicker = document.getElementById('color-picker');
   const tabSelect = document.getElementById('tab-select');
   const newTabButton = document.getElementById('new-tab');
+  const strokeSlider = document.getElementById('stroke-size');
+  const clearBtn = document.getElementById('clear-board');
 
   document.querySelectorAll('[data-tool]').forEach(btn => {
     btn.onclick = () => currentTool = btn.dataset.tool;
@@ -24,6 +27,10 @@ window.onload = () => {
 
   colorPicker.onchange = (e) => {
     currentColor = e.target.value;
+  };
+
+  strokeSlider.oninput = (e) => {
+    strokeSize = parseInt(e.target.value);
   };
 
   newTabButton.onclick = () => {
@@ -34,6 +41,16 @@ window.onload = () => {
 
   tabSelect.onchange = (e) => {
     switchBoard(e.target.value);
+  };
+
+  clearBtn.onclick = () => {
+    fetch(`${API_URL}?boardId=${currentBoardId}`, {
+      method: 'DELETE'
+    }).then(() => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      undoStack = [];
+      redoStack = [];
+    });
   };
 
   function addTab(boardId, select = false) {
@@ -78,7 +95,8 @@ window.onload = () => {
         type: 'squiggle',
         path,
         tool: currentTool,
-        color: currentTool === 'erase' ? 'white' : currentColor
+        color: currentTool === 'erase' ? 'white' : currentColor,
+        strokeSize
       };
     } else {
       shape = {
@@ -87,7 +105,8 @@ window.onload = () => {
         y1: startY,
         x2,
         y2,
-        color: currentColor
+        color: currentColor,
+        strokeSize
       };
     }
 
@@ -113,7 +132,7 @@ window.onload = () => {
       ctx.moveTo(path[path.length - 2].x, path[path.length - 2].y);
       ctx.lineTo(x, y);
       ctx.strokeStyle = currentTool === 'erase' ? 'white' : currentColor;
-      ctx.lineWidth = currentTool === 'erase' ? 20 : 2;
+      ctx.lineWidth = currentTool === 'erase' ? 20 : strokeSize;
       ctx.stroke();
     }
   };
@@ -136,11 +155,10 @@ window.onload = () => {
     }
 
     ctx.strokeStyle = shape.tool === 'erase' ? 'white' : (shape.color || 'black');
-    ctx.lineWidth = shape.tool === 'erase' ? 20 : 2;
+    ctx.lineWidth = shape.tool === 'erase' ? 20 : (shape.strokeSize || 2);
     ctx.stroke();
   }
 
-  // 🔁 Undo / Redo logic
   document.getElementById('undo-btn').onclick = () => {
     if (undoStack.length === 0) return;
 
@@ -173,15 +191,15 @@ window.onload = () => {
       drawShape(shape);
     });
   };
-document.getElementById('export-png').onclick = () => {
-  const image = canvas.toDataURL("image/png");
-  const link = document.createElement('a');
-  link.download = `${currentBoardId}.png`;
-  link.href = image;
-  link.click();
-};
 
-  // Initial board
+  document.getElementById('export-png').onclick = () => {
+    const image = canvas.toDataURL("image/png");
+    const link = document.createElement('a');
+    link.download = `${currentBoardId}.png`;
+    link.href = image;
+    link.click();
+  };
+
   addTab('default', true);
   switchBoard('default');
 };
