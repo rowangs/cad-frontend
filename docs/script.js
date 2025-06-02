@@ -3,79 +3,79 @@ window.onload = () => {
 
   let currentTool = 'line';
   let currentColor = '#000000';
+  let strokeSize = 2;
   let currentBoardId = 'default';
   let drawing = false;
   let startX, startY;
   let path = [];
-  let undoStack = [];
-  let redoStack = [];
-  let strokeSize = 2;
+
+  const undoStacks = {};
+  const redoStacks = {};
 
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   const API_URL = 'https://cad-backend.onrender.com/api/shapes';
 
   const colorPicker = document.getElementById('color-picker');
+  const strokeSlider = document.getElementById('stroke-size');
   const tabSelect = document.getElementById('tab-select');
   const newTabButton = document.getElementById('new-tab');
-  const strokeSlider = document.getElementById('stroke-size');
-  const clearBtn = document.getElementById('clear-board');
 
   document.querySelectorAll('[data-tool]').forEach(btn => {
     btn.onclick = () => currentTool = btn.dataset.tool;
   });
 
-  colorPicker.onchange = (e) => {
-    currentColor = e.target.value;
-  };
-
-  strokeSlider.oninput = (e) => {
-    strokeSize = parseInt(e.target.value);
-  };
+  colorPicker.oninput = e => currentColor = e.target.value;
+  strokeSlider.oninput = e => strokeSize = parseInt(e.target.value);
 
   newTabButton.onclick = () => {
-    const boardId = 'board-' + Date.now();
-    addTab(boardId, true);
-    switchBoard(boardId);
+    const newId = 'board-' + Date.now();
+    addTab(newId, true);
+    switchBoard(newId);
   };
 
-  tabSelect.onchange = (e) => {
-    switchBoard(e.target.value);
-  };
+  tabSelect.onchange = e => switchBoard(e.target.value);
 
-  clearBtn.onclick = () => {
-    fetch(`${API_URL}?boardId=${currentBoardId}`, {
-      method: 'DELETE'
-    }).then(() => {
+  document.getElementById('clear-board').onclick = () => {
+    fetch(`${API_URL}?boardId=${currentBoardId}`, { method: 'DELETE' }).then(() => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      undoStack = [];
-      redoStack = [];
+      undoStacks[currentBoardId] = [];
+      redoStacks[currentBoardId] = [];
     });
   };
 
-  function addTab(boardId, select = false) {
-    const opt = document.createElement('option');
-    opt.value = boardId;
-    opt.textContent = boardId;
-    tabSelect.appendChild(opt);
-    if (select) tabSelect.value = boardId;
-  }
+  document.getElementById('undo-btn').onclick = () => {
+    const stack = undoStacks[currentBoardId];
+    if (!stack || stack.length === 0) return;
+    const shape = stack.pop();
+    redoStacks[currentBoardId] ||= [];
+    redoStacks[currentBoardId].push(shape);
 
-  function switchBoard(boardId) {
-    currentBoardId = boardId;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    undoStack = [];
-    redoStack = [];
+    fetch(`${API_URL}/${shape.id}?boardId=${currentBoardId}`, { method: 'DELETE' })
+      .then(() => switchBoard(currentBoardId));
+  };
 
-    fetch(`${API_URL}?boardId=${boardId}`)
-      .then(res => res.json())
-      .then(shapes => {
-        shapes.forEach(shape => {
-          drawShape(shape);
-          undoStack.push(shape);
-        });
-      });
-  }
+  document.getElementById('redo-btn').onclick = () => {
+    const stack = redoStacks[currentBoardId];
+    if (!stack || stack.length === 0) return;
+    const shape = stack.pop();
+    undoStacks[currentBoardId] ||= [];
+    undoStacks[currentBoardId].push(shape);
+
+    fetch(`${API_URL}?boardId=${currentBoardId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(shape)
+    }).then(() => drawShape(shape));
+  };
+
+  document.getElementById('export-png').onclick = () => {
+    const image = canvas.toDataURL("image/png");
+    const link = document.createElement('a');
+    link.download = `${currentBoardId}.png`;
+    link.href = image;
+    link.click();
+  };
 
   canvas.onmousedown = (e) => {
     drawing = true;
@@ -90,8 +90,11 @@ window.onload = () => {
     const y2 = e.offsetY;
 
     let shape;
+    const shapeId = Date.now().toString();
+
     if (currentTool === 'squiggle' || currentTool === 'erase') {
       shape = {
+        id: shapeId,
         type: 'squiggle',
         path,
         tool: currentTool,
@@ -100,6 +103,7 @@ window.onload = () => {
       };
     } else {
       shape = {
+        id: shapeId,
         type: currentTool,
         x1: startX,
         y1: startY,
@@ -110,9 +114,10 @@ window.onload = () => {
       };
     }
 
+    undoStacks[currentBoardId] ||= [];
+    redoStacks[currentBoardId] = [];
+    undoStacks[currentBoardId].push(shape);
     drawShape(shape);
-    undoStack.push(shape);
-    redoStack = [];
 
     fetch(`${API_URL}?boardId=${currentBoardId}`, {
       method: 'POST',
@@ -159,46 +164,29 @@ window.onload = () => {
     ctx.stroke();
   }
 
-  document.getElementById('undo-btn').onclick = () => {
-    if (undoStack.length === 0) return;
+  function addTab(boardId, select = false) {
+    const opt = document.createElement('option');
+    opt.value = boardId;
+    opt.textContent = boardId;
+    tabSelect.appendChild(opt);
+    if (select) tabSelect.value = boardId;
+  }
 
-    const shape = undoStack.pop();
-    redoStack.push(shape);
+  function switchBoard(boardId) {
+    currentBoardId = boardId;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    undoStacks[boardId] = [];
+    redoStacks[boardId] = [];
 
-    fetch(`${API_URL}/${shape.id}?boardId=${currentBoardId}`, {
-      method: 'DELETE'
-    }).then(() => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      fetch(`${API_URL}?boardId=${currentBoardId}`)
-        .then(res => res.json())
-        .then(shapes => {
-          shapes.forEach(drawShape);
+    fetch(`${API_URL}?boardId=${boardId}`)
+      .then(res => res.json())
+      .then(shapes => {
+        shapes.forEach(shape => {
+          drawShape(shape);
+          undoStacks[boardId].push(shape);
         });
-    });
-  };
-
-  document.getElementById('redo-btn').onclick = () => {
-    if (redoStack.length === 0) return;
-
-    const shape = redoStack.pop();
-    undoStack.push(shape);
-
-    fetch(`${API_URL}?boardId=${currentBoardId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(shape)
-    }).then(() => {
-      drawShape(shape);
-    });
-  };
-
-  document.getElementById('export-png').onclick = () => {
-    const image = canvas.toDataURL("image/png");
-    const link = document.createElement('a');
-    link.download = `${currentBoardId}.png`;
-    link.href = image;
-    link.click();
-  };
+      });
+  }
 
   addTab('default', true);
   switchBoard('default');
