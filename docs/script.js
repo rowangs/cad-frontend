@@ -1,6 +1,4 @@
 window.onload = () => {
-  console.log("✅ CAD App Loaded");
-
   let currentTool = 'line';
   let currentColor = '#000000';
   let strokeSize = 2;
@@ -16,37 +14,34 @@ window.onload = () => {
   const ctx = canvas.getContext('2d');
   const API_URL = 'https://cad-backend.onrender.com/api/shapes';
 
-  const colorPicker = document.getElementById('color-picker');
-  const strokeSlider = document.getElementById('stroke-size');
-  const tabSelect = document.getElementById('tab-select');
-  const newTabButton = document.getElementById('new-tab');
-
   document.querySelectorAll('[data-tool]').forEach(btn => {
     btn.onclick = () => currentTool = btn.dataset.tool;
   });
 
-  colorPicker.oninput = e => currentColor = e.target.value;
-  strokeSlider.oninput = e => strokeSize = parseInt(e.target.value);
+  document.getElementById('color-picker').oninput = e => currentColor = e.target.value;
+  document.getElementById('stroke-size').oninput = e => strokeSize = parseInt(e.target.value);
 
-  newTabButton.onclick = () => {
+  document.getElementById('new-tab').onclick = () => {
     const newId = 'board-' + Date.now();
     addTab(newId, true);
     switchBoard(newId);
   };
 
-  tabSelect.onchange = e => switchBoard(e.target.value);
+  document.getElementById('tab-select').onchange = (e) => switchBoard(e.target.value);
 
   document.getElementById('clear-board').onclick = () => {
-    fetch(`${API_URL}?boardId=${currentBoardId}`, { method: 'DELETE' }).then(() => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      undoStacks[currentBoardId] = [];
-      redoStacks[currentBoardId] = [];
-    });
+    fetch(`${API_URL}?boardId=${currentBoardId}`, { method: 'DELETE' })
+      .then(() => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        undoStacks[currentBoardId] = [];
+        redoStacks[currentBoardId] = [];
+      });
   };
 
   document.getElementById('undo-btn').onclick = () => {
     const stack = undoStacks[currentBoardId];
-    if (!stack || stack.length === 0) return;
+    if (!stack?.length) return;
+
     const shape = stack.pop();
     redoStacks[currentBoardId] ||= [];
     redoStacks[currentBoardId].push(shape);
@@ -57,7 +52,8 @@ window.onload = () => {
 
   document.getElementById('redo-btn').onclick = () => {
     const stack = redoStacks[currentBoardId];
-    if (!stack || stack.length === 0) return;
+    if (!stack?.length) return;
+
     const shape = stack.pop();
     undoStacks[currentBoardId] ||= [];
     undoStacks[currentBoardId].push(shape);
@@ -70,10 +66,9 @@ window.onload = () => {
   };
 
   document.getElementById('export-png').onclick = () => {
-    const image = canvas.toDataURL("image/png");
     const link = document.createElement('a');
     link.download = `${currentBoardId}.png`;
-    link.href = image;
+    link.href = canvas.toDataURL("image/png");
     link.click();
   };
 
@@ -89,30 +84,22 @@ window.onload = () => {
     const x2 = e.offsetX;
     const y2 = e.offsetY;
 
-    let shape;
-    const shapeId = Date.now().toString();
-
-    if (currentTool === 'squiggle' || currentTool === 'erase') {
-      shape = {
-        id: shapeId,
-        type: 'squiggle',
-        path,
-        tool: currentTool,
-        color: currentTool === 'erase' ? 'white' : currentColor,
-        strokeSize
-      };
-    } else {
-      shape = {
-        id: shapeId,
-        type: currentTool,
-        x1: startX,
-        y1: startY,
-        x2,
-        y2,
-        color: currentColor,
-        strokeSize
-      };
-    }
+    const shape = (currentTool === 'squiggle' || currentTool === 'erase')
+      ? {
+          id: Date.now().toString(),
+          type: 'squiggle',
+          path,
+          color: currentTool === 'erase' ? 'white' : currentColor,
+          tool: currentTool,
+          strokeSize
+        }
+      : {
+          id: Date.now().toString(),
+          type: currentTool,
+          x1: startX, y1: startY, x2, y2,
+          color: currentColor,
+          strokeSize
+        };
 
     undoStacks[currentBoardId] ||= [];
     redoStacks[currentBoardId] = [];
@@ -127,19 +114,16 @@ window.onload = () => {
   };
 
   canvas.onmousemove = (e) => {
-    if (!drawing) return;
-    if (currentTool === 'squiggle' || currentTool === 'erase') {
-      const x = e.offsetX;
-      const y = e.offsetY;
-      path.push({ x, y });
+    if (!drawing || (currentTool !== 'squiggle' && currentTool !== 'erase')) return;
+    const x = e.offsetX, y = e.offsetY;
+    path.push({ x, y });
 
-      ctx.beginPath();
-      ctx.moveTo(path[path.length - 2].x, path[path.length - 2].y);
-      ctx.lineTo(x, y);
-      ctx.strokeStyle = currentTool === 'erase' ? 'white' : currentColor;
-      ctx.lineWidth = currentTool === 'erase' ? 20 : strokeSize;
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.moveTo(path[path.length - 2].x, path[path.length - 2].y);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = currentTool === 'erase' ? 'white' : currentColor;
+    ctx.lineWidth = currentTool === 'erase' ? 20 : strokeSize;
+    ctx.stroke();
   };
 
   function drawShape(shape) {
@@ -164,26 +148,26 @@ window.onload = () => {
     ctx.stroke();
   }
 
-  function addTab(boardId, select = false) {
+  function addTab(id, select = false) {
     const opt = document.createElement('option');
-    opt.value = boardId;
-    opt.textContent = boardId;
-    tabSelect.appendChild(opt);
-    if (select) tabSelect.value = boardId;
+    opt.value = id;
+    opt.textContent = id;
+    document.getElementById('tab-select').appendChild(opt);
+    if (select) document.getElementById('tab-select').value = id;
   }
 
-  function switchBoard(boardId) {
-    currentBoardId = boardId;
+  function switchBoard(id) {
+    currentBoardId = id;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    undoStacks[boardId] = [];
-    redoStacks[boardId] = [];
+    undoStacks[id] = [];
+    redoStacks[id] = [];
 
-    fetch(`${API_URL}?boardId=${boardId}`)
+    fetch(`${API_URL}?boardId=${id}`)
       .then(res => res.json())
       .then(shapes => {
         shapes.forEach(shape => {
           drawShape(shape);
-          undoStacks[boardId].push(shape);
+          undoStacks[id].push(shape);
         });
       });
   }
