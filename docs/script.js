@@ -22,7 +22,6 @@ window.onload = () => {
   const clearButton = document.getElementById('clear-board');
   const exportButton = document.getElementById('export-png');
   const strokeSlider = document.getElementById('stroke-slider');
-  <input type="range" id="stroke-slider" min="1" max="30" value="2" />
 
   const undoButton = document.getElementById('undo-btn');
   const redoButton = document.getElementById('redo-btn');
