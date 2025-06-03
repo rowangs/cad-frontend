@@ -43,7 +43,7 @@ Backend API: [Render Deployment](https://cad-backend-1.onrender.com)
 
 1. Clone backend repo:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/cad-backend
+   git clone https://github.com/rowangs/cad-backend
    cd cad-backend
    npm install
    node index.js
